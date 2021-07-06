@@ -36,7 +36,7 @@ jobs:
           tags:
             - pilina/cloudflared:latest
             - pilina/cloudflared:${{ steps.version.outputs.release }}
-          build-args:
-            - VERSION=${{ steps.version.outputs.release }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.release }}
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
