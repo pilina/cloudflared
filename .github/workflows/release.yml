@@ -1,0 +1,31 @@
+name: Get latest release version
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch:
+jobs:
+  get-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Release Versions
+        id: versions
+        run: |
+          echo "::set-output name=cloudflare::$( \
+            curl -sL https://api.github.com/repos/cloudflare/cloudflared/releases/latest \
+            | jq -r '.tag_name')"
+          echo "::set-output name=pilina::$( \
+            curl -sL https://api.github.com/repos/pilina/cloudflared/releases/latest \
+            | jq -r '.tag_name')"
+      - name: Create Release
+        id: create_release
+        if: steps.versions.outputs.cloudflare != steps.versions.outputs.cloudflare
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.versions.outputs.cloudflare }}
+          release_name: Release ${{ steps.versions.outputs.cloudflare }}
+          body: |
+            Updating to new cloudflared release `${{ steps.versions.outputs.cloudflare }}`
+          draft: false
+          prerelease: false
