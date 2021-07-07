@@ -16,6 +16,10 @@ jobs:
           echo "::set-output name=pilina::$( \
             curl -sL https://api.github.com/repos/pilina/cloudflared/releases/latest \
             | jq -r '.tag_name')"
+      - name: List Versions
+        run: |
+          echo "Cloudflare: ${{ steps.versions.outputs.cloudflare }}"
+          echo "Pilina: ${{ steps.versions.outputs.pilina }}"
       - name: Create Release
         id: create_release
         if: steps.versions.outputs.cloudflare != steps.versions.outputs.cloudflare
