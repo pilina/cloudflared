@@ -34,7 +34,9 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: pilina/cloudflared:${{ steps.version.outputs.release }}
+          tags: |
+            pilina/cloudflared:${{ steps.version.outputs.release }}
+            pilina/cloudflared:latest
           build-args: VERSION=${{ steps.version.outputs.release }}
       - name: Image digest
         run: echo ${{ steps.docker_build.outputs.digest }}
