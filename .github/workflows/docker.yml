@@ -4,8 +4,11 @@ on:
   push:
     branches:
       - master
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Release"]
+    types: 
+      - completed
+      - requested
 
 jobs:
   build:
