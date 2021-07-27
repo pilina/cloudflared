@@ -1,15 +1,19 @@
-name: Release
+name: Build and Release
 
 on:
   schedule:
     - cron: "0 10 * * *"
+  workflow_dispatch:
 
 jobs:
-  get-version:
+  version:
     runs-on: ubuntu-latest
+    outputs:
+      cloudflare: ${{ steps.version.outputs.cloudflare }}
+      pilina: ${{ steps.version.outputs.pilina }}
     steps:
       - name: Fetch Release Versions
-        id: versions
+        id: version
         run: |
           echo "::set-output name=cloudflare::$( \
             curl -sL https://api.github.com/repos/cloudflare/cloudflared/releases/latest \
@@ -19,18 +23,50 @@ jobs:
             | jq -r '.tag_name')"
       - name: List Versions
         run: |
-          echo "Cloudflare: ${{ steps.versions.outputs.cloudflare }}"
-          echo "Pilina: ${{ steps.versions.outputs.pilina }}"
+          echo "Cloudflare: ${{ steps.version.outputs.cloudflare }}"
+          echo "Pilina: ${{ steps.version.outputs.pilina }}"
+  release:
+    needs: version
+    if: needs.version.outputs.cloudflare != needs.version.outputs.pilina
+    runs-on: ubuntu-latest
+    steps:
       - name: Create Release
         id: create_release
-        if: steps.versions.outputs.cloudflare != steps.versions.outputs.pilina
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.versions.outputs.cloudflare }}
-          release_name: Release ${{ steps.versions.outputs.cloudflare }}
+          tag_name: ${{ needs.version.outputs.cloudflare }}
+          release_name: Release ${{ needs.version.outputs.cloudflare }}
           body: |
-            Updating to new cloudflared release `${{ steps.versions.outputs.cloudflare }}`
+            Updating to new cloudflared release `${{ needs.version.outputs.cloudflare }}`
           draft: false
           prerelease: false
+  build:
+    needs: version
+    if: needs.version.outputs.cloudflare != needs.version.outputs.pilina
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1.5.0
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and Push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            pilina/cloudflared:${{ needs.version.outputs.cloudflare }}
+            pilina/cloudflared:latest
+          build-args: VERSION=${{ needs.version.outputs.cloudflare }}
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
