@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: "0 10 * * *"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag'
+        required: true
 
 jobs:
   version:
@@ -18,9 +22,13 @@ jobs:
           echo "::set-output name=cloudflare::$( \
             curl -sL https://api.github.com/repos/cloudflare/cloudflared/releases/latest \
             | jq -r '.tag_name')"
-          echo "::set-output name=pilina::$( \
-            curl -sL https://api.github.com/repos/pilina/cloudflared/releases/latest \
-            | jq -r '.tag_name')"
+          if [ -z "${{ github.event.inputs.tag }}" ]; then
+            echo "::set-output name=pilina::$( \
+              curl -sL https://api.github.com/repos/pilina/cloudflared/releases/latest \
+              | jq -r '.tag_name')"
+          else
+            echo "::set-output name=pilina::${{ github.event.inputs.tag }}"
+          fi
       - name: List Versions
         run: |
           echo "Cloudflare: ${{ steps.version.outputs.cloudflare }}"
